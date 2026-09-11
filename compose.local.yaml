@@ -1,0 +1,41 @@
+name: rclone-web-local
+services:
+  rclone:
+    image: rclone/rclone@sha256:45401ad7410db1d67ffdb58e19059ad20b0d8e0285a60e38bbec55cc1019c7a5
+    command: ["rcd", "--rc-addr=0.0.0.0:5573", "--rc-allow-origin=http://127.0.0.1:5572", "--config=/config/rclone/rclone.conf", "--bwlimit=4M"]
+    env_file: .work/local-test/rclone.env
+    ports:
+      - "127.0.0.1:5573:5573"
+    volumes:
+      - ./.work/local-test/config:/config/rclone
+      - ./.work/local-test/data:/data
+    restart: unless-stopped
+  rclone-web:
+    image: rclone-web:local
+    build: .
+    depends_on:
+      - rclone
+    ports:
+      - "127.0.0.1:5572:5572"
+    environment:
+      RCLONE_URL: http://rclone:5573
+      RCLONE_USER: local-test
+      RCLONE_PASS_FILE: /run/secrets/rclone_password
+      QUEUE_TRANSFERS: "2"
+    secrets:
+      - rclone_password
+    volumes:
+      - queue-data:/app/queue-data
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    restart: unless-stopped
+secrets:
+  rclone_password:
+    file: .work/local-test/password
+volumes:
+  queue-data:
