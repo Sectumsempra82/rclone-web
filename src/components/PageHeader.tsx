@@ -13,7 +13,7 @@ export function PageHeader({
 }) {
     return (
         <section
-            className={cn('flex items-end justify-between gap-4 border-b px-6 py-4', className)}
+            className={cn('flex flex-wrap items-end justify-between gap-4 border-b px-6 py-4', className)}
             {...props}
         >
             <div className="min-w-0">

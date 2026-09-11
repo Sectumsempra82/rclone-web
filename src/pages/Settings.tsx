@@ -303,14 +303,14 @@ export function SettingsPage() {
                 <PageHeader title={t('settings.title')} description={t('settings.description')} />
 
                 <PageContent>
-                    <div className="p-6 mt-6 border rounded-xl bg-card lg:p-8">
+                    <div className="p-4 mt-6 border rounded-xl bg-card">
                         <div className="space-y-8">
                             <div className="space-y-5">
                                 <div className="flex items-center gap-3">
                                     <span className="inline-flex items-center justify-center rounded-md size-8 bg-primary/10 text-primary">
                                         <GaugeIcon className="size-4" />
                                     </span>
-                                    <h2 className="text-2xl font-semibold tracking-tight">
+                                    <h2 className="text-base font-semibold tracking-tight">
                                         {t('settings.performance')}
                                     </h2>
                                 </div>
@@ -332,7 +332,7 @@ export function SettingsPage() {
                                 ) : (
                                     <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
                                         <div className="space-y-2.5">
-                                            <h3 className="text-xl font-medium">
+                                            <h3 className="text-sm font-medium">
                                                 {t('settings.maxTransfers')}
                                             </h3>
                                             <p className="text-sm text-muted-foreground">
@@ -348,12 +348,12 @@ export function SettingsPage() {
                                                         event.target.value
                                                     )
                                                 }
-                                                className="h-12"
+                                                className="h-9"
                                             />
                                         </div>
 
                                         <div className="space-y-2.5">
-                                            <h3 className="text-xl font-medium">
+                                            <h3 className="text-sm font-medium">
                                                 {t('settings.checkers')}
                                             </h3>
                                             <p className="text-sm text-muted-foreground">
@@ -369,12 +369,12 @@ export function SettingsPage() {
                                                         event.target.value
                                                     )
                                                 }
-                                                className="h-12"
+                                                className="h-9"
                                             />
                                         </div>
 
                                         <div className="space-y-2.5">
-                                            <h3 className="text-xl font-medium">
+                                            <h3 className="text-sm font-medium">
                                                 {t('settings.bandwidthLimit')}
                                             </h3>
                                             <p className="text-sm text-muted-foreground">
@@ -386,12 +386,12 @@ export function SettingsPage() {
                                                     updatePerformance('bwLimit', event.target.value)
                                                 }
                                                 placeholder={t('settings.unlimitedPlaceholder')}
-                                                className="h-12"
+                                                className="h-9"
                                             />
                                         </div>
 
                                         <div className="space-y-2.5">
-                                            <h3 className="text-xl font-medium">
+                                            <h3 className="text-sm font-medium">
                                                 {t('settings.tpsLimit')}
                                             </h3>
                                             <p className="text-sm text-muted-foreground">
@@ -408,7 +408,7 @@ export function SettingsPage() {
                                                         event.target.value
                                                     )
                                                 }
-                                                className="h-12"
+                                                className="h-9"
                                             />
                                         </div>
                                     </div>
@@ -422,7 +422,7 @@ export function SettingsPage() {
                                     <span className="inline-flex items-center justify-center rounded-md size-8 bg-primary/10 text-primary">
                                         <FileCogIcon className="size-4" />
                                     </span>
-                                    <h2 className="text-2xl font-semibold tracking-tight">
+                                    <h2 className="text-base font-semibold tracking-tight">
                                         {t('settings.logging')}
                                     </h2>
                                 </div>
@@ -430,7 +430,7 @@ export function SettingsPage() {
                                 {optionsQuery.isSuccess ? (
                                     <>
                                         <div className="space-y-2.5">
-                                            <h3 className="text-xl font-medium">
+                                            <h3 className="text-sm font-medium">
                                                 {t('settings.defaultLogLevel')}
                                             </h3>
                                             <p className="text-sm text-muted-foreground">
@@ -443,7 +443,7 @@ export function SettingsPage() {
                                                     updateLogging('logLevel', value ?? logLevel)
                                                 }
                                             >
-                                                <SelectTrigger className="w-full data-[size=default]:h-12">
+                                                <SelectTrigger className="w-full data-[size=default]:h-9">
                                                     <SelectValue />
                                                 </SelectTrigger>
                                                 <SelectContent>
@@ -462,7 +462,7 @@ export function SettingsPage() {
                                         </div>
 
                                         <div className="space-y-2.5">
-                                            <h3 className="text-xl font-medium">
+                                            <h3 className="text-sm font-medium">
                                                 {t('settings.logFilePath')}
                                             </h3>
                                             <p className="text-sm text-muted-foreground">
@@ -480,7 +480,7 @@ export function SettingsPage() {
                                                     placeholder={t(
                                                         'settings.logFilePathPlaceholder'
                                                     )}
-                                                    className="h-12 font-mono"
+                                                    className="h-9 font-mono"
                                                 />
                                             </div>
                                         </div>
@@ -495,14 +495,14 @@ export function SettingsPage() {
                                     <span className="inline-flex items-center justify-center rounded-md size-8 bg-primary/10 text-primary">
                                         <LayersIcon className="size-4" />
                                     </span>
-                                    <h2 className="text-2xl font-semibold tracking-tight">
+                                    <h2 className="text-base font-semibold tracking-tight">
                                         {t('settings.configFile')}
                                     </h2>
                                 </div>
 
                                 <div className="space-y-5">
                                     <div className="space-y-2.5">
-                                        <h3 className="text-xl font-medium">
+                                        <h3 className="text-sm font-medium">
                                             {t('settings.configPath')}
                                         </h3>
                                         <p className="text-sm text-muted-foreground">
@@ -528,12 +528,12 @@ export function SettingsPage() {
                                                     !('configPath' in configEdits)) ||
                                                 saveMutation.isPending
                                             }
-                                            className="h-12 font-mono"
+                                            className="h-9 font-mono"
                                         />
                                     </div>
 
                                     <div className="space-y-2.5">
-                                        <h3 className="text-xl font-medium">
+                                        <h3 className="text-sm font-medium">
                                             {t('settings.configContents')}
                                         </h3>
                                         <p className="text-sm text-muted-foreground">
@@ -636,7 +636,7 @@ export function SettingsPage() {
                             {t('settings.relatedDocs')}
                         </h3>
                         <ul className="space-y-3">
-                            <li className="flex items-center gap-3 text-xl group">
+                            <li className="flex items-center gap-3 text-sm group">
                                 <BookOpenIcon className="size-4 text-muted-foreground transition-colors duration-1200 group-hover:text-foreground" />
                                 <a
                                     href="https://rclone.org/flags/"
@@ -647,7 +647,7 @@ export function SettingsPage() {
                                     {t('settings.globalFlagsReference')}
                                 </a>
                             </li>
-                            <li className="flex items-center gap-3 text-xl group">
+                            <li className="flex items-center gap-3 text-sm group">
                                 <LightbulbIcon className="size-4 text-muted-foreground transition-colors duration-1200 group-hover:text-foreground" />
                                 <a
                                     href="https://rcloneui.com/docs/cli/tips/dry-run"
@@ -658,7 +658,7 @@ export function SettingsPage() {
                                     {t('settings.tipsAndTricks')}
                                 </a>
                             </li>
-                            <li className="flex items-center gap-3 text-xl group">
+                            <li className="flex items-center gap-3 text-sm group">
                                 <MessageCircleCodeIcon className="size-4 text-muted-foreground transition-colors duration-1200 group-hover:text-foreground" />
                                 <a
                                     href="https://github.com/rclone/rclone-web"

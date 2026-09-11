@@ -192,7 +192,7 @@ export function DashboardPage() {
             ) : null}
 
             <PageContent>
-                <div className="space-y-6">
+                <div className="space-y-8">
                     <DiscordBanner />
 
                     {sponsor?.type === 'banner' ? (

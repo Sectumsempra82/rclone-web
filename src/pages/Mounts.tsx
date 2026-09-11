@@ -150,44 +150,44 @@ export function MountsPage() {
                 {mounts.length > 0 ? (
                     <div className="grid gap-6 grid-cols-[repeat(auto-fill,minmax(320px,1fr))]">
                         {mounts.map((mount) => (
-                            <Card key={mount.MountPoint}>
+                            <Card key={mount.MountPoint} size="sm">
                                 <CardHeader className="border-b">
-                                    <CardTitle className="text-xl font-semibold">
+                                    <CardTitle className="text-sm font-semibold">
                                         {getRemoteName(mount.Fs)}
                                     </CardTitle>
                                 </CardHeader>
 
                                 <CardContent className="space-y-4">
                                     <dl className="space-y-4">
-                                        <div className="space-y-1.5">
+                                        <div className="space-y-1">
                                             <dt className="text-xs tracking-wide uppercase text-muted-foreground">
                                                 {t('mounts.source')}
                                             </dt>
-                                            <dd className="font-mono text-base font-medium break-all">
+                                            <dd className="font-mono text-xs font-medium break-all">
                                                 {mount.Fs}
                                             </dd>
                                         </div>
-                                        <div className="space-y-1.5">
+                                        <div className="space-y-1">
                                             <dt className="text-xs tracking-wide uppercase text-muted-foreground">
                                                 {t('mounts.mountPoint')}
                                             </dt>
-                                            <dd className="font-mono text-base font-medium break-all">
+                                            <dd className="font-mono text-xs font-medium break-all">
                                                 {mount.MountPoint}
                                             </dd>
                                         </div>
-                                        <div className="space-y-1.5">
+                                        <div className="space-y-1">
                                             <dt className="text-xs tracking-wide uppercase text-muted-foreground">
                                                 {t('mounts.mountedOn')}
                                             </dt>
-                                            <dd className="text-base font-medium tabular-nums">
+                                            <dd className="text-xs font-medium tabular-nums">
                                                 {formatTime(mount.MountedOn)}
                                             </dd>
                                         </div>
-                                        <div className="space-y-1.5">
+                                        <div className="space-y-1">
                                             <dt className="text-xs tracking-wide uppercase text-muted-foreground">
                                                 {t('mounts.uptime')}
                                             </dt>
-                                            <dd className="text-base font-medium tabular-nums">
+                                            <dd className="text-xs font-medium tabular-nums">
                                                 {formatUptime(mount.MountedOn)}
                                             </dd>
                                         </div>

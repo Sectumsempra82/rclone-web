@@ -1193,16 +1193,16 @@ export function RemotesDetailsPage() {
                                 <Table className="table-fixed">
                                     <TableHeader className="bg-muted/40">
                                         <TableRow className="hover:bg-muted/40">
-                                            <TableHead className="px-2 font-semibold text-muted-foreground uppercase">
+                                            <TableHead className="font-semibold text-muted-foreground uppercase">
                                                 {t('remotesDetails.name')}
                                             </TableHead>
-                                            <TableHead className="w-24 px-4 font-semibold text-muted-foreground uppercase">
+                                            <TableHead className="w-24 font-semibold text-muted-foreground uppercase">
                                                 {t('remotesDetails.size')}
                                             </TableHead>
-                                            <TableHead className="w-36 px-4 font-semibold text-muted-foreground uppercase">
+                                            <TableHead className="w-36 font-semibold text-muted-foreground uppercase">
                                                 {t('remotesDetails.modified')}
                                             </TableHead>
-                                            <TableHead className="w-36 px-4 text-right font-semibold text-muted-foreground uppercase">
+                                            <TableHead className="w-36 text-right font-semibold text-muted-foreground uppercase">
                                                 {t('common.actions')}
                                             </TableHead>
                                         </TableRow>
@@ -1213,7 +1213,7 @@ export function RemotesDetailsPage() {
                                             <TableRow>
                                                 <TableCell
                                                     colSpan={4}
-                                                    className="px-4 py-10 text-center"
+                                                    className="py-10 text-center"
                                                 >
                                                     <div className="space-y-1">
                                                         <p className="text-sm font-medium">
@@ -1255,16 +1255,16 @@ export function RemotesDetailsPage() {
                                                         }
                                                         className="group/row hover:bg-muted/20"
                                                     >
-                                                        <TableCell className="px-2 py-3 overflow-hidden">
+                                                        <TableCell className="overflow-hidden">
                                                             {item.IsDir ? (
                                                                 <button
                                                                     type="button"
                                                                     onClick={() =>
                                                                         openFolder(item.Name)
                                                                     }
-                                                                    className="flex max-w-full items-center gap-3 rounded-md px-1 py-1 pr-2.5 -translate-x-1 text-left transition-colors hover:bg-muted"
+                                                                    className="flex max-w-full items-center gap-2 rounded-md px-1 py-0 pr-2.5 -translate-x-1 text-left transition-colors hover:bg-muted"
                                                                 >
-                                                                    <span className="inline-flex size-10 shrink-0 items-center justify-center rounded-md bg-indigo-500/10 text-indigo-600">
+                                                                    <span className="inline-flex size-6 shrink-0 items-center justify-center rounded-md [&_svg]:size-4 bg-indigo-500/10 text-indigo-600">
                                                                         <FolderIcon />
                                                                     </span>
                                                                     <span className="truncate font-medium">
@@ -1275,7 +1275,7 @@ export function RemotesDetailsPage() {
                                                                 <div className="flex max-w-full items-center gap-3">
                                                                     <span
                                                                         className={cn(
-                                                                            'inline-flex size-10 shrink-0 items-center justify-center rounded-md',
+                                                                            'inline-flex size-6 shrink-0 items-center justify-center rounded-md [&_svg]:size-4',
                                                                             fileTypeUi.className
                                                                         )}
                                                                     >
@@ -1288,16 +1288,16 @@ export function RemotesDetailsPage() {
                                                             )}
                                                         </TableCell>
 
-                                                        <TableCell className="px-4 py-3 font-medium text-muted-foreground">
+                                                        <TableCell className="font-medium text-muted-foreground">
                                                             {item.IsDir
                                                                 ? '--'
                                                                 : formatBytes(item.Size)}
                                                         </TableCell>
-                                                        <TableCell className="px-4 py-3 font-medium text-muted-foreground">
+                                                        <TableCell className="font-medium text-muted-foreground">
                                                             {formatModTime(item.ModTime)}
                                                         </TableCell>
 
-                                                        <TableCell className="px-4 py-3">
+                                                        <TableCell className="">
                                                             <div className="flex justify-end gap-1 opacity-0 transition-opacity group-hover/row:opacity-100 group-focus-within/row:opacity-100">
                                                                 <div className="hidden sm:block">
                                                                     <Tooltip>

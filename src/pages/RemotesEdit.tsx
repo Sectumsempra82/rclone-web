@@ -177,7 +177,7 @@ export function RemotesEditPage() {
             />
 
             <PageContent>
-                <div className="p-6 mt-6 border rounded-xl bg-card">
+                <div className="p-4 mt-6 border rounded-xl bg-card">
                     {isPending ? (
                         <div className="flex items-center justify-center h-40">
                             <Spinner className="size-8" />
