@@ -52,5 +52,8 @@ export function queueAction<T>(
 
 export async function enqueueTransfer(input: Omit<TransferRequest, 'requestId'>) {
     const snapshot = await fetchQueue()
-    return queueAction('enqueue', { ...input, requestId: crypto.randomUUID() }, snapshot.executeId)
+    const requestId = Array.from(crypto.getRandomValues(new Uint8Array(16)), (byte) =>
+        byte.toString(16).padStart(2, '0')
+    ).join('')
+    return queueAction('enqueue', { ...input, requestId }, snapshot.executeId)
 }
