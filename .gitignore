@@ -27,3 +27,13 @@ dist-ssr
 # E2E
 playwright-report
 test-results
+# GUI queue service
+dist-server/
+queue-data/
+.env
+
+# Private instructions and deployment notes
+AGENTS.md
+docs/
+.notebook/
+compose.truenas.yaml

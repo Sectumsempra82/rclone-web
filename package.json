@@ -8,7 +8,10 @@
         "build": "tsc -b && vite build",
         "preview": "vite preview",
         "lint": "biome check .",
-        "test": "npm run build && npx playwright test"
+        "test": "npm run build && npx playwright test",
+        "build:service": "tsc -p tsconfig.server.json",
+        "start": "node --experimental-sqlite dist-server/server/main.js",
+        "test:queue": "npm run build:service && node --experimental-sqlite --test dist-server/server/queue.test.js"
     },
     "dependencies": {
         "@base-ui/react": "^1.7.0",
