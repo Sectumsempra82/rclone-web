@@ -33,6 +33,7 @@ import {
     useSearchParams,
 } from 'react-router-dom'
 import { toast } from 'sonner'
+import { PathLabel } from '@/components/PathLabel'
 import { PageContent } from '@/components/PageContent'
 import { RefreshButton } from '@/components/RefreshButton'
 import { Alert, AlertAction, AlertDescription, AlertTitle } from '@/components/ui/alert'
@@ -1267,9 +1268,10 @@ export function RemotesDetailsPage() {
                                                                     <span className="inline-flex size-6 shrink-0 items-center justify-center rounded-md [&_svg]:size-4 bg-indigo-500/10 text-indigo-600">
                                                                         <FolderIcon />
                                                                     </span>
-                                                                    <span className="truncate font-medium">
-                                                                        {item.Name}
-                                                                    </span>
+                                                                    <PathLabel
+                                                                        value={item.Name}
+                                                                        className="font-medium"
+                                                                    />
                                                                 </button>
                                                             ) : (
                                                                 <div className="flex max-w-full items-center gap-3">
@@ -1281,9 +1283,10 @@ export function RemotesDetailsPage() {
                                                                     >
                                                                         <FileTypeIcon />
                                                                     </span>
-                                                                    <span className="truncate font-medium">
-                                                                        {item.Name}
-                                                                    </span>
+                                                                    <PathLabel
+                                                                        value={item.Name}
+                                                                        className="font-medium"
+                                                                    />
                                                                 </div>
                                                             )}
                                                         </TableCell>

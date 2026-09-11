@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { ChevronDownIcon, ChevronRightIcon, PauseIcon, PlayIcon, Trash2Icon } from 'lucide-react'
 import { type ReactNode, useState } from 'react'
 import { toast } from 'sonner'
+import { PathLabel } from '@/components/PathLabel'
 import { TransferByteProgress } from '@/components/TransferByteProgress'
 import { TransfersTable } from '@/components/TransfersTable'
 import { Button } from '@/components/ui/button'
@@ -103,9 +104,7 @@ function QueueGroupTable({
                     onClick={() => setExpanded((value) => !value)}
                 >
                     {expanded ? <ChevronDownIcon /> : <ChevronRightIcon />}
-                    <span className="truncate" title={label}>
-                        {label}
-                    </span>
+                    <PathLabel value={label} className="flex-1" />
                     <span className="text-xs text-muted-foreground">
                         {t('queue.count', {
                             count: currentGroup.total,

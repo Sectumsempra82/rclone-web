@@ -187,7 +187,7 @@ test('queue controls pause/resume, remove selected work, and collapse independen
     const toggle = queue.getByRole('button', { name: /^Queue/ })
     await toggle.click()
     await expect(queue.getByRole('table')).toBeHidden()
-    await expect(page.getByText('Source:active.bin', { exact: true })).toBeVisible()
+    await expect(page.getByTitle('Source:active.bin', { exact: true })).toBeVisible()
     await toggle.click()
     await queue
         .getByRole('button', { name: 'Remove Source:three.bin from queue', exact: true })
@@ -349,4 +349,86 @@ test('separate group tables isolate stopping and checkbox removal', async ({ pag
     await page.setViewportSize({ width: 390, height: 844 })
     await second.getByRole('button', { name: 'Stop group', exact: true }).scrollIntoViewIfNeeded()
     await page.screenshot({ path: 'test-results/queue-groups-mobile.png', fullPage: true })
+})
+
+test('long paths preserve their beginning and filename ending as the table resizes', async ({
+    page,
+}) => {
+    const directory = 'Projects/Archive/2026/September/Originals/'
+    const names = [
+        directory + 'report-final.pdf',
+        directory + 'a-very-long-filename-with-many-details-and-a-distinctive-ending.tar.gz',
+        'short.txt',
+    ]
+    await page.addInitScript(() =>
+        localStorage.setItem(
+            'lite-auth-store',
+            JSON.stringify({
+                state: { url: 'http://rc.test', user: 'fixture', pass: 'fixture' },
+                version: 0,
+            })
+        )
+    )
+    await page.route('http://rc.test/**', async (route) => {
+        const responses: Record<string, unknown> = {
+            '/core/stats': {
+                transferring: names.map((name) => ({
+                    ...file(name, ''),
+                    speed: 128,
+                    percentage: 50,
+                })),
+            },
+            '/core/transferred': { transferred: [] },
+            '/job/status': { id: 7, finished: false, startTime: '2026-09-11T09:00:00Z' },
+            '/config/listremotes': { remotes: ['Source'] },
+            '/operations/list': {
+                list: [false, true].map((IsDir) => ({
+                    Name:
+                        'a-very-long-filename-with-many-details-and-more-details-and-even-more-details-and-a-distinctive-ending' +
+                        (IsDir ? '-folder' : '.tar.gz'),
+                    Path: 'fixture',
+                    Size: 1024,
+                    IsDir,
+                    ModTime: '2026-09-11T09:00:00Z',
+                })),
+            },
+            '/config/dump': {},
+        }
+        await route.fulfill({ json: responses[new URL(route.request().url()).pathname] ?? {} })
+    })
+    await page.goto('/transfers')
+    const labels = names.map((name) =>
+        page.locator('tbody').getByTitle('Source:' + name, { exact: true })
+    )
+    const visible = labels.map((label) => label.locator('[aria-hidden="true"]'))
+    await expect(visible[0]).toHaveText(/^Source.*\.\.\.report-final\.pdf$/)
+    await expect(visible[1]).toHaveText(/^Source.*\.\.\..*ending\.tar\.gz$/)
+    await expect(visible[2]).toHaveText('Source:short.txt')
+    for (const label of labels) {
+        await label.hover()
+        expect(await label.evaluate((element) => element.scrollWidth <= element.clientWidth)).toBe(
+            true
+        )
+    }
+    const narrow = await visible[1].textContent()
+    await page.setViewportSize({ width: 3000, height: 900 })
+    await expect.poll(() => visible[1].textContent()).not.toBe(narrow)
+    await expect(visible[1]).toHaveText(
+        /a-very-long-filename-with-many-details-and-a-distinctive-ending\.tar\.gz$/
+    )
+    await page.setViewportSize({ width: 1280, height: 720 })
+    await expect(visible[1]).toHaveText(narrow!)
+    await page.screenshot({ path: 'test-results/filename-ellipsis.png', fullPage: true })
+    await page.goto('/remotes/Source')
+    const explorerLabels = page.locator('tbody span[title]')
+    await expect(explorerLabels).toHaveCount(2)
+    for (const label of await explorerLabels.all()) {
+        await expect(label.locator('[aria-hidden="true"]')).toHaveText(
+            /^a-.*\.\.\..*(folder|tar\.gz)$/
+        )
+        expect(await label.evaluate((element) => element.scrollWidth <= element.clientWidth)).toBe(
+            true
+        )
+    }
+    await page.screenshot({ path: 'test-results/explorer-ellipsis.png', fullPage: true })
 })

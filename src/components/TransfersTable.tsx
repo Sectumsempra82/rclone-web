@@ -1,4 +1,5 @@
 import { CheckCircle2Icon, ClockIcon, RefreshCwIcon, Trash2Icon, XCircleIcon } from 'lucide-react'
+import { PathLabel } from '@/components/PathLabel'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
@@ -26,11 +27,7 @@ function getTransferredLabel(job: JobRow) {
 }
 
 function TransferLocationCell({ value }: { value: string }) {
-    return (
-        <span title={value} className="block truncate text-xs leading-4">
-            {value || '—'}
-        </span>
-    )
+    return <PathLabel value={value} className="text-xs leading-4" />
 }
 
 const statusUi: Record<
