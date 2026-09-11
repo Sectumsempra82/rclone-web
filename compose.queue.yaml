@@ -1,0 +1,32 @@
+services:
+  rclone-web:
+    build: .
+    restart: unless-stopped
+    ports:
+      - "${GUI_BIND:-127.0.0.1}:5572:5572"
+    environment:
+      RCLONE_URL: ${RCLONE_URL:?Set the existing backend RC URL}
+      RCLONE_USER: ${RCLONE_USER:?Set the existing backend user}
+      RCLONE_PASS_FILE: /run/secrets/rclone_password
+      QUEUE_TRANSFERS: ${QUEUE_TRANSFERS:-4}
+    secrets:
+      - rclone_password
+    volumes:
+      - queue-data:/app/queue-data
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: "3"
+secrets:
+  rclone_password:
+    file: ${RCLONE_PASSWORD_FILE:?Set path to a file containing the existing backend password}
+volumes:
+  queue-data:
