@@ -39,7 +39,7 @@ export async function fetchQueue(offset = 0, groupId?: string): Promise<QueueSna
 }
 
 export function queueAction<T>(
-    action: 'pause' | 'group-pause' | 'remove' | 'enqueue',
+    action: 'pause' | 'group-pause' | 'remove' | 'enqueue' | 'retry',
     body: object,
     executeId: string
 ) {

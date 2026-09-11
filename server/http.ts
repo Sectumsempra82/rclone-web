@@ -149,6 +149,17 @@ export function createGuiServer(queue: Queue, rc: RC, authorization: string, sta
                         }
                         send(200, { paused: body.paused })
                         return
+                    case '/api/queue/retry':
+                        if (typeof body.id !== 'string' || !body.id || body.id.length > 80) {
+                            send(400, { error: 'Supply an entry ID' })
+                            return
+                        }
+                        if (!(await queue.retry(body.id, executeId))) {
+                            send(409, { error: 'Entry is no longer failed. Refresh the queue.' })
+                            return
+                        }
+                        send(200, { retried: true })
+                        return
                     case '/api/queue/remove':
                         if (
                             !Array.isArray(body.ids) ||

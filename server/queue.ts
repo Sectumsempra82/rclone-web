@@ -130,6 +130,7 @@ export function byteProgress(
 export class Queue {
     readonly db: DatabaseSync
     private ticking = false
+    private scanning = false
     private closed = false
     private liveBytes = new Map<string, number>()
     error = ''
@@ -154,6 +155,7 @@ export class Queue {
                 groupId TEXT NOT NULL DEFAULT 'legacy', status TEXT NOT NULL DEFAULT 'pending', jobId INTEGER, executeId TEXT, error TEXT NOT NULL DEFAULT ''
             );
             CREATE INDEX IF NOT EXISTS queue_status ON entries(status,seq);
+            CREATE INDEX IF NOT EXISTS queue_kind_status ON entries(kind,status,seq);
             UPDATE settings SET paused=1 WHERE EXISTS(SELECT 1 FROM entries WHERE status='dispatching' AND kind='file');
             UPDATE entries SET status='failed', error='Submission interrupted; check destination and rclone jobs before resubmitting.' WHERE status='dispatching' AND kind='file';
             UPDATE entries SET status='pending' WHERE status='dispatching' AND kind='directory';
@@ -264,6 +266,23 @@ export class Queue {
                 .changes !== 0
         )
     }
+    async retry(id: string, executeId: string): Promise<boolean> {
+        const entry = this.db
+            .prepare("SELECT * FROM entries WHERE id=? AND status='failed'")
+            .get(id) as unknown as QueueEntry | undefined
+        if (!entry) return false
+        if (entry.jobId != null && entry.executeId === executeId) {
+            const status = await this.rc('/job/status', { jobid: entry.jobId })
+            if (status.finished !== true)
+                throw new Error('This transfer is still running in rclone.')
+        }
+        const result = this.db
+            .prepare(
+                "UPDATE entries SET status='pending',jobId=NULL,executeId=NULL,error='' WHERE id=? AND status='failed'"
+            )
+            .run(id)
+        return result.changes !== 0
+    }
     remove(ids: string[]) {
         return this.transaction(() => {
             let removed = 0
@@ -285,7 +304,7 @@ export class Queue {
             SELECT g.id,g.seq,g.label,g.paused,g.completedBytes,g.completedFiles,
                 COUNT(e.id) AS remaining,
                 COALESCE(SUM(e.status != 'running'),0) AS total,
-                COALESCE(SUM(e.status IN ('running','dispatching')),0) AS active,
+                COALESCE(SUM(e.kind='file' AND e.status IN ('running','dispatching')),0) AS active,
                 COALESCE(SUM(e.status = 'failed'),0) AS failed,
                 COALESCE(SUM(CASE WHEN e.kind='file' THEN MAX(0,e.size) ELSE 0 END),0) AS remainingBytes,
                 COALESCE(SUM(e.kind='directory' OR e.size<0),0) + g.unknownCompleted AS unknown
@@ -350,7 +369,7 @@ export class Queue {
             active: Number(
                 this.db
                     .prepare(
-                        "SELECT count(*) AS n FROM entries WHERE status IN ('running','dispatching')"
+                        "SELECT count(*) AS n FROM entries WHERE kind='file' AND status IN ('running','dispatching')"
                     )
                     .get()?.n ?? 0
             ),
@@ -444,13 +463,35 @@ export class Queue {
         }
     }
     async tick() {
+        await Promise.all([this.transferTick(), this.scanTick()])
+    }
+    private async scanTick() {
+        if (this.scanning || this.closed || this.paused) return
+        const entry = this.db
+            .prepare(
+                "SELECT e.* FROM entries e JOIN queue_groups g ON g.id=e.groupId WHERE e.kind='directory' AND e.status='pending' AND g.paused=0 ORDER BY e.seq LIMIT 1"
+            )
+            .get() as unknown as QueueEntry | undefined
+        if (!entry) return
+        this.scanning = true
+        try {
+            const claim = this.db
+                .prepare("UPDATE entries SET status='dispatching' WHERE id=? AND status='pending'")
+                .run(entry.id)
+            if (claim.changes === 0) return
+            await this.start(entry, '')
+        } finally {
+            this.scanning = false
+        }
+    }
+    private async transferTick() {
         if (this.ticking || this.closed) return
         const hasRunning = this.db
             .prepare("SELECT 1 FROM entries WHERE status='running' LIMIT 1")
             .get()
         const hasPending = this.db
             .prepare(
-                "SELECT 1 FROM entries e JOIN queue_groups g ON g.id=e.groupId WHERE e.status='pending' AND g.paused=0 LIMIT 1"
+                "SELECT 1 FROM entries e JOIN queue_groups g ON g.id=e.groupId WHERE e.kind='file' AND e.status='pending' AND g.paused=0 LIMIT 1"
             )
             .get()
         if (!hasRunning && (this.paused || !hasPending)) return
@@ -538,7 +579,7 @@ export class Queue {
             ) {
                 const entry = this.db
                     .prepare(
-                        "SELECT e.* FROM entries e JOIN queue_groups g ON g.id=e.groupId WHERE e.status='pending' AND g.paused=0 ORDER BY e.seq LIMIT 1"
+                        "SELECT e.* FROM entries e JOIN queue_groups g ON g.id=e.groupId WHERE e.kind='file' AND e.status='pending' AND g.paused=0 ORDER BY e.seq LIMIT 1"
                     )
                     .get() as unknown as QueueEntry | undefined
                 if (!entry) break
@@ -559,7 +600,8 @@ export class Queue {
     }
     async close() {
         this.closed = true
-        while (this.ticking) await new Promise((resolve) => setTimeout(resolve, 10))
+        while (this.ticking || this.scanning)
+            await new Promise((resolve) => setTimeout(resolve, 10))
         this.db.close()
     }
 }

@@ -90,6 +90,7 @@ export function TransfersTable({
         onSelect: (id: string, checked: boolean) => void
         onSelectAll: (checked: boolean) => void
         onRemove: (id: string) => void
+        onRetry: (id: string) => void
         busy: boolean
     }
 }) {
@@ -324,20 +325,38 @@ export function TransfersTable({
                                     )}
                                 >
                                     {queueControls ? (
-                                        <Button
-                                            size="xs"
-                                            variant="destructive"
-                                            aria-label={t('queue.removeEntry', {
-                                                source: job.source,
-                                            })}
-                                            disabled={
-                                                queueControls.busy ||
-                                                (job.status !== 'queued' && job.status !== 'failed')
-                                            }
-                                            onClick={() => queueControls.onRemove(job.rowKey)}
-                                        >
-                                            <Trash2Icon className="size-3" />
-                                        </Button>
+                                        <div className="flex flex-col items-start gap-1">
+                                            {job.status === 'failed' ? (
+                                                <Button
+                                                    size="xs"
+                                                    variant="outline"
+                                                    aria-label={t('queue.retryEntry', {
+                                                        source: job.source,
+                                                    })}
+                                                    disabled={queueControls.busy}
+                                                    onClick={() =>
+                                                        queueControls.onRetry(job.rowKey)
+                                                    }
+                                                >
+                                                    {t('queue.retry')}
+                                                </Button>
+                                            ) : null}
+                                            <Button
+                                                size="xs"
+                                                variant="destructive"
+                                                aria-label={t('queue.removeEntry', {
+                                                    source: job.source,
+                                                })}
+                                                disabled={
+                                                    queueControls.busy ||
+                                                    (job.status !== 'queued' &&
+                                                        job.status !== 'failed')
+                                                }
+                                                onClick={() => queueControls.onRemove(job.rowKey)}
+                                            >
+                                                <Trash2Icon className="size-3" />
+                                            </Button>
+                                        </div>
                                     ) : job.canStop ? (
                                         <div className="flex justify-start">
                                             <Button

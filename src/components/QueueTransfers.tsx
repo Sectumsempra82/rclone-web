@@ -43,13 +43,14 @@ function QueueGroupTable({
             action,
             body,
         }: {
-            action: 'group-pause' | 'remove'
+            action: 'group-pause' | 'remove' | 'retry'
             body: object
         }) => {
             if (!data || query.isError) throw new Error(t('queue.unavailable'))
             return queueAction<{ removed?: number }>(action, body, data.executeId)
         },
         onSuccess: (result, variables) => {
+            if (variables.action === 'retry') toast.success(t('queue.retried'))
             if (variables.action === 'remove') {
                 setSelected(new Set())
                 toast.success(t('queue.removed', { count: result.removed ?? 0 }))
@@ -186,6 +187,8 @@ function QueueGroupTable({
                                             )
                                         ),
                                     onRemove: (id) => remove([id]),
+                                    onRetry: (id) =>
+                                        mutation.mutate({ action: 'retry', body: { id } }),
                                 }}
                             />
                         ) : (

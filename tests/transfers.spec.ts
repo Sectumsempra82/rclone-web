@@ -95,7 +95,7 @@ test('queue controls pause/resume, remove selected work, and collapse independen
         mode: 'copy',
         kind: 'file',
         size: 1024,
-        status: 'pending',
+        status: index === 2 ? 'failed' : 'pending',
         jobId: null,
         executeId: null,
         error: '',
@@ -134,6 +134,14 @@ test('queue controls pause/resume, remove selected work, and collapse independen
             expect(request.headers()['x-rclone-instance']).toBe('fixture-instance')
             actions.push(path)
             const body = request.postDataJSON()
+            if (path.endsWith('/retry')) {
+                expect(body).toEqual({ id: 'q-2' })
+                entries = entries.map((entry) =>
+                    entry.id === body.id ? { ...entry, status: 'pending' } : entry
+                )
+                await route.fulfill({ json: { retried: true } })
+                return
+            }
             if (path.endsWith('/pause')) {
                 paused = body.paused
                 await route.fulfill({ json: { paused } })
@@ -183,7 +191,11 @@ test('queue controls pause/resume, remove selected work, and collapse independen
     await queue.getByRole('checkbox', { name: 'Select Source:two.bin', exact: true }).check()
     await queue.getByRole('button', { name: 'Remove selected (2)', exact: true }).click()
     await expect(queue.locator('tbody tr')).toHaveCount(1)
+    await expect(queue.getByRole('button', { name: /^Retry / })).toHaveCount(1)
     await page.screenshot({ path: 'test-results/queue-desktop.png', fullPage: true })
+    await queue.getByRole('button', { name: 'Retry Source:three.bin', exact: true }).click()
+    await expect(queue.getByRole('button', { name: /^Retry / })).toHaveCount(0)
+    await expect(queue.locator('tbody tr').getByText('Queued', { exact: true })).toBeVisible()
     const toggle = queue.getByRole('button', { name: /^Queue/ })
     await toggle.click()
     await expect(queue.getByRole('table')).toBeHidden()
@@ -197,6 +209,7 @@ test('queue controls pause/resume, remove selected work, and collapse independen
         '/api/queue/pause',
         '/api/queue/pause',
         '/api/queue/remove',
+        '/api/queue/retry',
         '/api/queue/remove',
     ])
     await page.setViewportSize({ width: 390, height: 844 })

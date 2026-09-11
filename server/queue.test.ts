@@ -109,6 +109,168 @@ test('bulk removal only removes queued work and directory expansion preserves ne
     }
 })
 
+test('folder discovery reaches a known total while all transfer slots stay occupied', async () => {
+    const fake = backend()
+    const listed: string[] = []
+    const rc: RC = async (path, body = {}) => {
+        if (path !== '/operations/list') return fake.rc(path, body)
+        listed.push(String(body.remote))
+        return {
+            list:
+                body.remote === 'folder'
+                    ? [{ Name: 'nested', IsDir: true, Size: -1 }]
+                    : [{ Name: 'file', IsDir: false, Size: 50 }],
+        }
+    }
+    const queue = new Queue(':memory:', rc, 4)
+    try {
+        for (const name of ['a', 'b', 'c', 'd']) queue.enqueue(transfer(name))
+        await queue.tick()
+        queue.enqueue(transfer('folder', true))
+        await queue.tick()
+        assert.equal(queue.snapshot('instance-a').progress.totalKnown, false)
+        await queue.tick()
+        assert.deepEqual(listed, ['folder', 'folder/nested'])
+        assert.equal(queue.snapshot('instance-a').active, 4)
+        assert.equal(queue.snapshot('instance-a').progress.totalKnown, true)
+        assert.equal(queue.snapshot('instance-a').progress.totalBytes, 4 * 1024 + 50)
+        assert.equal(fake.calls.filter((call) => call.path === '/operations/copyfile').length, 4)
+    } finally {
+        await queue.close()
+    }
+})
+
+test('a slow listing permits file completion and replacement, stays single-flight, and drains on close', async () => {
+    const fake = backend()
+    let release!: () => void
+    const listing = new Promise<void>((resolve) => {
+        release = resolve
+    })
+    let listings = 0
+    const rc: RC = async (path, body) => {
+        if (path !== '/operations/list') return fake.rc(path, body)
+        listings++
+        await listing
+        return { list: [] }
+    }
+    const queue = new Queue(':memory:', rc, 1)
+    let pending: Promise<void> | undefined
+    let closing: Promise<void> | undefined
+    try {
+        queue.enqueue(transfer('a'))
+        await queue.tick()
+        queue.enqueue(transfer('folder', true))
+        pending = queue.tick()
+        // Let the transfer poll finish while directory listing remains blocked.
+        await new Promise<void>((resolve) => setImmediate(resolve))
+        const claimed = queue
+            .snapshot('instance-a')
+            .entries.find((entry) => entry.kind === 'directory')!
+        assert.equal(queue.remove([claimed.id]), 0)
+        queue.enqueue(transfer('b'))
+        queue.enqueue(transfer('another-folder', true))
+        fake.finish()
+        await queue.tick()
+        assert.equal(listings, 1)
+        assert.equal(fake.calls.filter((call) => call.path === '/operations/copyfile').length, 2)
+        let closed = false
+        closing = queue.close().then(() => {
+            closed = true
+        })
+        await new Promise<void>((resolve) => setImmediate(resolve))
+        assert.equal(closed, false)
+        release()
+        await pending
+        await closing
+        assert.equal(listings, 1)
+    } finally {
+        release()
+        await pending
+        await (closing ?? queue.close())
+    }
+})
+
+test('scanner respects global and group pauses and retains failed listings for review', async () => {
+    const fake = backend()
+    const listed: string[] = []
+    const rc: RC = async (path, body = {}) => {
+        if (path !== '/operations/list') return fake.rc(path, body)
+        listed.push(String(body.remote))
+        if (body.remote === 'broken') throw new Error('Listing unavailable')
+        return { list: [] }
+    }
+    const queue = new Queue(':memory:', rc)
+    try {
+        queue.enqueue(transfer('paused', true))
+        queue.enqueue(transfer('broken', true))
+        queue.enqueue(transfer('healthy', true))
+        queue.setGroupPaused('paused', true)
+        queue.setPaused(true)
+        await queue.tick()
+        assert.deepEqual(listed, [])
+        queue.setPaused(false)
+        await queue.tick()
+        await queue.tick()
+        await queue.tick()
+        assert.deepEqual(listed, ['broken', 'healthy'])
+        assert.equal(queue.snapshot('instance-a').failed, 1)
+        assert.match(
+            queue.snapshot('instance-a', 0, 'broken').entries[0].error,
+            /Listing unavailable/
+        )
+        queue.setGroupPaused('paused', false)
+        await queue.tick()
+        assert.deepEqual(listed, ['broken', 'healthy', 'paused'])
+    } finally {
+        await queue.close()
+    }
+})
+
+test('retry resets failed files and directories without bypassing pauses or duplicating active jobs', async () => {
+    const fake = backend()
+    const queue = new Queue(':memory:', fake.rc, 1)
+    try {
+        queue.enqueue(transfer('file'))
+        const id = queue.snapshot('instance-a').entries[0].id
+        assert.equal(await queue.retry(id, 'instance-a'), false)
+        assert.equal(await queue.retry('missing', 'instance-a'), false)
+        await queue.tick()
+        assert.equal(await queue.retry(id, 'instance-a'), false)
+        queue.db.prepare("UPDATE entries SET status='failed',error='Uncertain' WHERE id=?").run(id)
+        await assert.rejects(queue.retry(id, 'instance-a'), /still running/)
+        fake.finish()
+        queue.setPaused(true)
+        queue.setGroupPaused('file', true)
+        assert.equal(await queue.retry(id, 'instance-a'), true)
+        assert.equal(await queue.retry(id, 'instance-a'), false)
+        const entry = queue.snapshot('instance-a').entries[0]
+        assert.equal(entry.status, 'pending')
+        assert.equal(entry.error, '')
+        assert.equal(entry.jobId, null)
+        assert.equal(entry.executeId, null)
+        assert.equal(entry.groupId, 'file')
+        assert.equal(queue.paused, true)
+        assert.equal(queue.snapshot('instance-a').groups[0].paused, true)
+        await queue.tick()
+        queue.setPaused(false)
+        await queue.tick()
+        assert.equal(fake.calls.filter((call) => call.path === '/operations/copyfile').length, 1)
+        queue.setGroupPaused('file', false)
+        await queue.tick()
+        assert.equal(fake.calls.filter((call) => call.path === '/operations/copyfile').length, 2)
+        queue.enqueue(transfer('folder', true))
+        const folder = queue.snapshot('instance-a', 0, 'folder').entries[0]
+        queue.db
+            .prepare("UPDATE entries SET status='failed',error='Listing failed' WHERE id=?")
+            .run(folder.id)
+        assert.equal(await queue.retry(folder.id, 'instance-a'), true)
+        await queue.tick()
+        assert.ok(fake.calls.some((call) => call.path === '/operations/list'))
+    } finally {
+        await queue.close()
+    }
+})
+
 test('rclone restart quarantines old job IDs without replay or cancellation', async () => {
     const fake = backend()
     const queue = new Queue(':memory:', fake.rc, 1)
@@ -275,6 +437,17 @@ test('HTTP API authenticates, rejects wrong backend/cross-origin calls and serve
             404
         )
         const id = queue.snapshot('instance-a').entries[0].id
+        const retry = (body: object) =>
+            fetch(`${base}/api/queue/retry`, {
+                method: 'POST',
+                headers,
+                body: JSON.stringify(body),
+            })
+        assert.equal((await retry({ id: 123 })).status, 400)
+        assert.equal((await retry({ id })).status, 409)
+        queue.db.prepare("UPDATE entries SET status='failed',error='Failed' WHERE id=?").run(id)
+        assert.equal((await retry({ id })).status, 200)
+        assert.equal((await retry({ id })).status, 409)
         const response = await fetch(`${base}/api/queue/remove`, {
             method: 'POST',
             headers,
