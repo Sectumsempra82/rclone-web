@@ -1,6 +1,7 @@
-import { CheckCircle2Icon, RefreshCwIcon, XCircleIcon } from 'lucide-react'
+import { CheckCircle2Icon, ClockIcon, RefreshCwIcon, Trash2Icon, XCircleIcon } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { Checkbox } from '@/components/ui/checkbox'
 import {
     Table,
     TableBody,
@@ -26,7 +27,9 @@ function getTransferredLabel(job: JobRow) {
 
 function TransferLocationCell({ value }: { value: string }) {
     return (
-        <span className="block whitespace-normal leading-5 break-all text-sm">{value || '—'}</span>
+        <span title={value} className="block truncate text-xs leading-4">
+            {value || '—'}
+        </span>
     )
 }
 
@@ -39,6 +42,12 @@ const statusUi: Record<
         progressClassName: string
     }
 > = {
+    queued: {
+        label: 'queue.pending',
+        icon: ClockIcon,
+        badgeClassName: 'bg-muted text-muted-foreground',
+        progressClassName: 'bg-muted-foreground',
+    },
     running: {
         label: 'transfersTable.running',
         icon: RefreshCwIcon,
@@ -60,43 +69,68 @@ const statusUi: Record<
 }
 
 const columnWidths = {
-    id: 'w-[92px]',
-    status: 'w-[168px]',
-    source: 'w-[320px]',
-    destination: 'w-[372px]',
-    progress: 'w-[284px]',
-    speed: 'w-[152px]',
-    eta: 'w-[152px]',
-    actions: 'w-[124px]',
+    id: 'w-[64px]',
+    status: 'w-[112px]',
+    source: 'w-[240px]',
+    destination: 'w-[240px]',
+    progress: 'w-[220px]',
+    speed: 'w-[100px]',
+    eta: 'w-[100px]',
+    actions: 'w-[80px]',
 } as const
 
 export function TransfersTable({
     jobs,
     onStop,
     isStopping,
+    queueControls,
 }: {
     jobs: JobRow[]
     onStop: (jobid: number) => void
     isStopping: boolean
+    queueControls?: {
+        selected: Set<string>
+        onSelect: (id: string, checked: boolean) => void
+        onSelectAll: (checked: boolean) => void
+        onRemove: (id: string) => void
+        busy: boolean
+    }
 }) {
     const t = useT()
+    const removable = jobs.filter((job) => job.status === 'queued' || job.status === 'failed')
+    const selectedCount = removable.filter((job) => queueControls?.selected.has(job.rowKey)).length
     return (
         <div className="overflow-hidden rounded-xl border">
-            <Table className="min-w-[1664px] table-fixed">
+            <Table className="min-w-[1156px] table-fixed">
                 <TableHeader className="bg-muted/40">
                     <TableRow className="hover:bg-muted/40">
+                        {queueControls ? (
+                            <TableHead className="w-9 px-2">
+                                <Checkbox
+                                    aria-label={t('queue.selectPage')}
+                                    checked={
+                                        removable.length > 0 && selectedCount === removable.length
+                                    }
+                                    indeterminate={
+                                        selectedCount > 0 && selectedCount < removable.length
+                                    }
+                                    disabled={queueControls.busy || removable.length === 0}
+                                    onCheckedChange={queueControls.onSelectAll}
+                                />
+                            </TableHead>
+                        ) : null}
                         <TableHead
                             className={cn(
                                 columnWidths.id,
-                                'h-12 px-4 text-left font-semibold text-muted-foreground'
+                                'h-9 px-2 text-left font-semibold text-muted-foreground'
                             )}
                         >
-                            {t('transfersTable.group')}
+                            {t(queueControls ? 'queue.entry' : 'transfersTable.group')}
                         </TableHead>
                         <TableHead
                             className={cn(
                                 columnWidths.status,
-                                'h-12 px-4 text-left font-semibold text-muted-foreground'
+                                'h-9 px-2 text-left font-semibold text-muted-foreground'
                             )}
                         >
                             {t('transfersTable.status')}
@@ -104,7 +138,7 @@ export function TransfersTable({
                         <TableHead
                             className={cn(
                                 columnWidths.source,
-                                'h-12 px-4 text-left font-semibold text-muted-foreground'
+                                'h-9 px-2 text-left font-semibold text-muted-foreground'
                             )}
                         >
                             {t('transfersTable.source')}
@@ -112,7 +146,7 @@ export function TransfersTable({
                         <TableHead
                             className={cn(
                                 columnWidths.destination,
-                                'h-12 px-4 text-left font-semibold text-muted-foreground'
+                                'h-9 px-2 text-left font-semibold text-muted-foreground'
                             )}
                         >
                             {t('transfersTable.destination')}
@@ -120,7 +154,7 @@ export function TransfersTable({
                         <TableHead
                             className={cn(
                                 columnWidths.progress,
-                                'h-12 px-4 text-left font-semibold text-muted-foreground'
+                                'h-9 px-2 text-left font-semibold text-muted-foreground'
                             )}
                         >
                             {t('transfersTable.progress')}
@@ -128,7 +162,7 @@ export function TransfersTable({
                         <TableHead
                             className={cn(
                                 columnWidths.speed,
-                                'h-12 px-4 text-left font-semibold text-muted-foreground'
+                                'h-9 px-2 text-left font-semibold text-muted-foreground'
                             )}
                         >
                             {t('transfersTable.speed')}
@@ -136,7 +170,7 @@ export function TransfersTable({
                         <TableHead
                             className={cn(
                                 columnWidths.eta,
-                                'h-12 px-4 text-left font-semibold text-muted-foreground'
+                                'h-9 px-2 text-left font-semibold text-muted-foreground'
                             )}
                         >
                             {t('transfersTable.eta')}
@@ -144,7 +178,7 @@ export function TransfersTable({
                         <TableHead
                             className={cn(
                                 columnWidths.actions,
-                                'h-12 px-4 text-left font-semibold text-muted-foreground'
+                                'h-9 px-2 text-left font-semibold text-muted-foreground'
                             )}
                         >
                             {t('transfersTable.actions')}
@@ -158,7 +192,7 @@ export function TransfersTable({
                         const badge = (
                             <Badge
                                 className={cn(
-                                    'h-7 gap-1.5 px-2.5 text-xs tracking-wide',
+                                    'h-6 gap-1 px-1.5 text-xs tracking-wide',
                                     ui.badgeClassName
                                 )}
                                 variant="secondary"
@@ -175,10 +209,27 @@ export function TransfersTable({
 
                         return (
                             <TableRow key={job.rowKey} className="hover:bg-muted/20">
+                                {queueControls ? (
+                                    <TableCell className="w-9 px-2 py-1.5">
+                                        <Checkbox
+                                            aria-label={t('queue.selectEntry', {
+                                                source: job.source,
+                                            })}
+                                            checked={queueControls.selected.has(job.rowKey)}
+                                            disabled={
+                                                queueControls.busy ||
+                                                (job.status !== 'queued' && job.status !== 'failed')
+                                            }
+                                            onCheckedChange={(checked) =>
+                                                queueControls.onSelect(job.rowKey, checked)
+                                            }
+                                        />
+                                    </TableCell>
+                                ) : null}
                                 <TableCell
                                     className={cn(
                                         columnWidths.id,
-                                        'px-4 py-4 text-left font-mono text-base font-medium text-muted-foreground tabular-nums align-middle'
+                                        'px-2 py-1.5 text-left font-mono text-xs font-medium text-muted-foreground tabular-nums align-middle'
                                     )}
                                 >
                                     #{job.id}
@@ -187,7 +238,7 @@ export function TransfersTable({
                                 <TableCell
                                     className={cn(
                                         columnWidths.status,
-                                        'px-4 py-4 text-left align-middle'
+                                        'px-2 py-1.5 text-left align-middle'
                                     )}
                                 >
                                     <div className="flex justify-start">
@@ -211,7 +262,7 @@ export function TransfersTable({
                                 <TableCell
                                     className={cn(
                                         columnWidths.source,
-                                        'px-4 py-4 text-left align-middle'
+                                        'px-2 py-1.5 text-left align-middle'
                                     )}
                                 >
                                     <TransferLocationCell value={job.source} />
@@ -220,7 +271,7 @@ export function TransfersTable({
                                 <TableCell
                                     className={cn(
                                         columnWidths.destination,
-                                        'px-4 py-4 text-left align-middle'
+                                        'px-2 py-1.5 text-left align-middle'
                                     )}
                                 >
                                     <TransferLocationCell value={job.destination} />
@@ -229,17 +280,17 @@ export function TransfersTable({
                                 <TableCell
                                     className={cn(
                                         columnWidths.progress,
-                                        'px-4 py-4 text-left align-middle'
+                                        'px-2 py-1.5 text-left align-middle'
                                     )}
                                 >
-                                    <div className="w-full max-w-[260px] space-y-2">
-                                        <div className="flex items-center justify-between gap-4 text-sm tabular-nums">
+                                    <div className="w-full max-w-[204px] space-y-1">
+                                        <div className="flex items-center justify-between gap-2 text-xs tabular-nums">
                                             <span className="font-medium">{job.progress}%</span>
                                             <span className="text-muted-foreground">
                                                 {getTransferredLabel(job)}
                                             </span>
                                         </div>
-                                        <div className="h-2 overflow-hidden rounded-full bg-muted">
+                                        <div className="h-1 overflow-hidden rounded-full bg-muted">
                                             <div
                                                 className={cn(
                                                     'h-full rounded-full transition-all',
@@ -254,7 +305,7 @@ export function TransfersTable({
                                 <TableCell
                                     className={cn(
                                         columnWidths.speed,
-                                        'px-4 py-4 text-left text-base font-medium tabular-nums align-middle'
+                                        'px-2 py-1.5 text-left text-xs font-medium tabular-nums align-middle'
                                     )}
                                 >
                                     {job.speedLabel}
@@ -263,7 +314,7 @@ export function TransfersTable({
                                 <TableCell
                                     className={cn(
                                         columnWidths.eta,
-                                        'px-4 py-4 text-left text-base font-medium tabular-nums align-middle'
+                                        'px-2 py-1.5 text-left text-xs font-medium tabular-nums align-middle'
                                     )}
                                 >
                                     {job.etaLabel}
@@ -272,13 +323,28 @@ export function TransfersTable({
                                 <TableCell
                                     className={cn(
                                         columnWidths.actions,
-                                        'px-4 py-4 text-left align-middle'
+                                        'px-2 py-1.5 text-left align-middle'
                                     )}
                                 >
-                                    {job.canStop ? (
+                                    {queueControls ? (
+                                        <Button
+                                            size="xs"
+                                            variant="destructive"
+                                            aria-label={t('queue.removeEntry', {
+                                                source: job.source,
+                                            })}
+                                            disabled={
+                                                queueControls.busy ||
+                                                (job.status !== 'queued' && job.status !== 'failed')
+                                            }
+                                            onClick={() => queueControls.onRemove(job.rowKey)}
+                                        >
+                                            <Trash2Icon className="size-3" />
+                                        </Button>
+                                    ) : job.canStop ? (
                                         <div className="flex justify-start">
                                             <Button
-                                                size="sm"
+                                                size="xs"
                                                 variant="destructive"
                                                 disabled={isStopping}
                                                 onClick={() => onStop(job.id)}

@@ -12,8 +12,9 @@ type TransferredItem =
 export type JobRow = {
     rowKey: string
     id: number
-    status: 'running' | 'completed' | 'failed'
+    status: 'running' | 'completed' | 'failed' | 'queued'
     startTime: string
+    completedAt?: string
     source: string
     destination: string
     bytes: number
@@ -357,6 +358,7 @@ export async function fetchJobsSnapshot() {
             id: jobid,
             status: isFailed ? 'failed' : 'completed',
             startTime: status.startTime,
+            completedAt: getText(item.completed_at),
             source: source || '—',
             destination: destination || '—',
             bytes,
@@ -413,15 +415,18 @@ export async function fetchJobsSnapshot() {
             })
         )
 
-    // Sort: running first, then failed, then completed.
+    // Keep active files above history; successful completions are newest first.
     const statusOrder = {
         running: 0,
-        failed: 1,
-        completed: 2,
+        queued: 3,
+        completed: 1,
+        failed: 2,
     } satisfies Record<JobRow['status'], number>
 
     return [...runningRows, ...failedRows, ...completedRows].sort(
-        (a, b) => statusOrder[a.status] - statusOrder[b.status]
+        (a, b) =>
+            statusOrder[a.status] - statusOrder[b.status] ||
+            (Date.parse(b.completedAt ?? '') || 0) - (Date.parse(a.completedAt ?? '') || 0)
     )
 }
 

@@ -74,7 +74,8 @@ import { formatBytes } from '@/lib/format'
 import { useT } from '@/lib/i18n'
 import { useStore } from '@/lib/store'
 import { cn } from '@/lib/ui'
-import rclone, { rcloneAsync } from '@/rclone/client'
+import rclone from '@/rclone/client'
+import { enqueueTransfer } from '@/rclone/queue'
 import { fetchLocalUsage, fetchRemotesList, fetchRemoteUsage } from '@/rclone/usage'
 
 const IMAGE_EXTS = new Set([
@@ -529,72 +530,7 @@ export function RemotesDetailsPage() {
     })
 
     const transferMutation = useMutation({
-        mutationFn: async ({
-            source,
-            dstFs,
-            dstCurrentPath,
-            mode,
-        }: {
-            source: { fs: string; path: string; name: string; isDir: boolean }
-            dstFs: string
-            dstCurrentPath: string
-            mode: 'copy' | 'move'
-        }) => {
-            const dstPath = [dstCurrentPath, source.name].filter(Boolean).join('/')
-
-            if (source.isDir) {
-                await rclone('/operations/mkdir', {
-                    params: { query: { fs: dstFs, remote: dstPath } },
-                })
-
-                const syncBody = {
-                    srcFs: `${source.fs}${source.path}`,
-                    dstFs: `${dstFs}${dstPath}`,
-                    createEmptySrcDirs: true,
-                }
-                const result =
-                    mode === 'copy'
-                        ? await rcloneAsync('/sync/copy', { body: syncBody })
-                        : await rcloneAsync('/sync/move', { body: syncBody })
-
-                const jobid = result.jobid
-                if (!jobid) throw new Error('No job ID returned')
-
-                await new Promise((resolve) => setTimeout(resolve, 1000))
-                const status = await rclone('/job/status', {
-                    params: { query: { jobid } },
-                }).catch(() => null)
-
-                if (!status) throw new Error('Could not verify job status')
-                if (status.error) throw new Error(status.error)
-
-                return jobid
-            }
-
-            const fileBody = {
-                srcFs: source.fs,
-                srcRemote: source.path,
-                dstFs,
-                dstRemote: dstPath,
-            }
-            const result =
-                mode === 'copy'
-                    ? await rcloneAsync('/operations/copyfile', { body: fileBody })
-                    : await rcloneAsync('/operations/movefile', { body: fileBody })
-
-            const jobid = result.jobid
-            if (!jobid) throw new Error('No job ID returned')
-
-            await new Promise((resolve) => setTimeout(resolve, 1000))
-            const status = await rclone('/job/status', {
-                params: { query: { jobid } },
-            }).catch(() => null)
-
-            if (!status) throw new Error('Could not verify job status')
-            if (status.error) throw new Error(status.error)
-
-            return jobid
-        },
+        mutationFn: enqueueTransfer,
     })
 
     // --- Memos ---
@@ -769,24 +705,19 @@ export function RemotesDetailsPage() {
                             ? buildLocalPathHref(source.fs.replace(/\/$/, ''), sourceDir)
                             : buildRemotePathHref(source.fs.replace(/:$/, ''), sourceDir)
 
-                        toast(
-                            mode === 'copy'
-                                ? t('remotesDetails.copyStarted')
-                                : t('remotesDetails.moveStarted'),
-                            {
-                                position: 'bottom-left',
-                                action: movedAway
-                                    ? {
-                                          label: t('remotesDetails.backToSource'),
-                                          onClick: () => navigate(sourcePath),
-                                      }
-                                    : undefined,
-                                cancel: {
-                                    label: t('remotesDetails.viewTransfers'),
-                                    onClick: () => navigate('/transfers'),
-                                },
-                            }
-                        )
+                        toast(mode === 'copy' ? t('queue.copyQueued') : t('queue.moveQueued'), {
+                            position: 'bottom-left',
+                            action: movedAway
+                                ? {
+                                      label: t('remotesDetails.backToSource'),
+                                      onClick: () => navigate(sourcePath),
+                                  }
+                                : undefined,
+                            cancel: {
+                                label: t('remotesDetails.viewTransfers'),
+                                onClick: () => navigate('/transfers'),
+                            },
+                        })
 
                         queryClient.invalidateQueries({ queryKey: ['jobs'] })
                     },

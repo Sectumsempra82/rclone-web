@@ -1,11 +1,14 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { CircleDotIcon, PlusIcon } from 'lucide-react'
+import { ChevronDownIcon, ChevronRightIcon, CircleDotIcon, PlusIcon } from 'lucide-react'
+import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
 import { PageContent } from '@/components/PageContent'
 import { PageHeader } from '@/components/PageHeader'
 import { PageWrapper } from '@/components/PageWrapper'
+import { QueuePauseButton, QueueTransfers } from '@/components/QueueTransfers'
 import { RefreshButton } from '@/components/RefreshButton'
+import { OverallTransferProgress } from '@/components/TransferByteProgress'
 import { TransfersTable } from '@/components/TransfersTable'
 import { Alert, AlertAction, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
@@ -19,6 +22,7 @@ export function TransfersPage() {
     const t = useT()
     const navigate = useNavigate()
     const queryClient = useQueryClient()
+    const [historyExpanded, setHistoryExpanded] = useState(true)
 
     const jobsQuery = useQuery({
         queryKey: ['jobs'],
@@ -46,6 +50,8 @@ export function TransfersPage() {
     })
 
     const jobs = jobsQuery.data ?? []
+    const activeJobs = jobs.filter((job) => job.status === 'running')
+    const visibleJobs = historyExpanded ? jobs : activeJobs
 
     return (
         <PageWrapper>
@@ -64,6 +70,7 @@ export function TransfersPage() {
                                 {t('transfers.newTransfer')}
                             </Button>
                         ) : null}
+                        <QueuePauseButton />
                         <RefreshButton
                             isFetching={jobsQuery.isFetching}
                             refetch={jobsQuery.refetch}
@@ -71,55 +78,87 @@ export function TransfersPage() {
                     </div>
                 }
             />
+            <OverallTransferProgress />
             <PageContent>
-                {jobsQuery.isPending ? (
-                    <div className="flex items-center justify-center px-6 py-14">
-                        <Spinner className="size-8" />
-                    </div>
-                ) : null}
+                <QueueTransfers>
+                    {jobsQuery.isPending ? (
+                        <div className="flex items-center justify-center px-6 py-14">
+                            <Spinner className="size-8" />
+                        </div>
+                    ) : null}
 
-                {jobsQuery.isError ? (
-                    <Alert variant="destructive">
-                        <AlertTitle>{t('transfers.loadError')}</AlertTitle>
-                        <AlertDescription>
-                            {jobsQuery.error instanceof Error
-                                ? jobsQuery.error.message
-                                : t('common.unknownError')}
-                        </AlertDescription>
-                        <AlertAction>
+                    {jobsQuery.isError ? (
+                        <Alert variant="destructive">
+                            <AlertTitle>{t('transfers.loadError')}</AlertTitle>
+                            <AlertDescription>
+                                {jobsQuery.error instanceof Error
+                                    ? jobsQuery.error.message
+                                    : t('common.unknownError')}
+                            </AlertDescription>
+                            <AlertAction>
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="xs"
+                                    onClick={() => {
+                                        jobsQuery.refetch()
+                                    }}
+                                >
+                                    {t('common.retry')}
+                                </Button>
+                            </AlertAction>
+                        </Alert>
+                    ) : null}
+
+                    {jobsQuery.isSuccess && jobs.length === 0 ? (
+                        <Empty className="rounded-xl border">
+                            <EmptyHeader>
+                                <EmptyMedia variant="icon">
+                                    <CircleDotIcon />
+                                </EmptyMedia>
+                                <EmptyTitle>{t('transfers.emptyTitle')}</EmptyTitle>
+                                <EmptyDescription>
+                                    {t('transfers.emptyDescription')}
+                                </EmptyDescription>
+                            </EmptyHeader>
+                        </Empty>
+                    ) : null}
+
+                    {jobs.length > 0 ? (
+                        <section aria-label={t('transfers.activity')} className="space-y-4">
                             <Button
                                 type="button"
-                                variant="outline"
-                                size="xs"
-                                onClick={() => {
-                                    jobsQuery.refetch()
-                                }}
+                                variant="ghost"
+                                className="w-full justify-start"
+                                aria-expanded={historyExpanded}
+                                aria-controls="transfer-activity"
+                                onClick={() => setHistoryExpanded((expanded) => !expanded)}
                             >
-                                {t('common.retry')}
+                                {historyExpanded ? <ChevronDownIcon /> : <ChevronRightIcon />}
+                                {t('transfers.activity')}
+                                <span className="text-xs text-muted-foreground">
+                                    {t('transfers.activityCount', {
+                                        active: activeJobs.length,
+                                        finished: jobs.length - activeJobs.length,
+                                    })}
+                                </span>
                             </Button>
-                        </AlertAction>
-                    </Alert>
-                ) : null}
-
-                {jobsQuery.isSuccess && jobs.length === 0 ? (
-                    <Empty className="rounded-xl border">
-                        <EmptyHeader>
-                            <EmptyMedia variant="icon">
-                                <CircleDotIcon />
-                            </EmptyMedia>
-                            <EmptyTitle>{t('transfers.emptyTitle')}</EmptyTitle>
-                            <EmptyDescription>{t('transfers.emptyDescription')}</EmptyDescription>
-                        </EmptyHeader>
-                    </Empty>
-                ) : null}
-
-                {jobs.length > 0 ? (
-                    <TransfersTable
-                        jobs={jobs}
-                        onStop={(jobid) => stopMutation.mutate(jobid)}
-                        isStopping={stopMutation.isPending}
-                    />
-                ) : null}
+                            <div id="transfer-activity">
+                                {visibleJobs.length > 0 ? (
+                                    <TransfersTable
+                                        jobs={visibleJobs}
+                                        onStop={(jobid) => stopMutation.mutate(jobid)}
+                                        isStopping={stopMutation.isPending}
+                                    />
+                                ) : (
+                                    <p className="rounded-xl border px-3 py-4 text-sm text-muted-foreground">
+                                        {t('transfers.noActive')}
+                                    </p>
+                                )}
+                            </div>
+                        </section>
+                    ) : null}
+                </QueueTransfers>
             </PageContent>
         </PageWrapper>
     )
